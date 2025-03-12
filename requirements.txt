@@ -6,6 +6,7 @@ annotated-types==0.6.0
 anyio==4.3.0
 kaleido
 asgiref==3.8.1
+uvicorn==0.29.0
 asn1crypto==1.5.1
 asttokens==2.4.1
 async-timeout==4.0.3
