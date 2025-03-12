@@ -40,26 +40,42 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 import configure
-os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'Cloud_service.json'
-client = bigquery.Client()
+# os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'Cloud_service.json'
+# client = bigquery.Client()
 def create_bigquery_uri(project_id, dataset_id):
     """Creates a BigQuery URI string."""
     return f"{project_id}.{dataset_id}"
 
 
 class BigQuerySQLDatabase(SQLDatabase):
-    def __init__(self, credentials_path):
+    def __init__(self):
         try:
-            with open(credentials_path, 'r') as f:
-                credentials_info = json.load(f)
+            # Create credentials dictionary from environment variables
+            credentials_info = {
+                "type": os.getenv('GOOGLE_CREDENTIALS_TYPE'),
+                "project_id": os.getenv('GOOGLE_CREDENTIALS_PROJECT_ID'),
+                "private_key_id": os.getenv('GOOGLE_CREDENTIALS_PRIVATE_KEY_ID'),
+                "private_key": os.getenv('GOOGLE_CREDENTIALS_PRIVATE_KEY'),
+                "client_email": os.getenv('GOOGLE_CREDENTIALS_CLIENT_EMAIL'),
+                "client_id": os.getenv('GOOGLE_CREDENTIALS_CLIENT_ID'),
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+                "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/bqserviceacc%40prateekproject-450509.iam.gserviceaccount.com",
+                "universe_domain": "googleapis.com"
+            }
 
-            credentials = service_account.Credentials.from_service_account_info(credentials_info)
+            # Load credentials from dictionary
+            credentials = service_account.Credentials.from_service_account_info(
+                credentials_info,
+                scopes=["https://www.googleapis.com/auth/bigquery"]
+            )
+
             self.project_id = credentials_info["project_id"]
             self.client = bigquery.Client(credentials=credentials, project=self.project_id)
 
         except Exception as e:
-            raise ValueError(f"Error loading credentials from JSON file: {e}")
-
+            raise ValueError(f"Error loading credentials: {e}")
     def run(self, command: str):
         """Executes a SQL query and returns results as JSON."""
         try:
@@ -99,7 +115,7 @@ class BigQuerySQLDatabase(SQLDatabase):
                 schema_info += f"Error getting schema for table {table_name}: {e}\n"
 
         return schema_info
-db = BigQuerySQLDatabase("Cloud_service.json")
+db = BigQuerySQLDatabase()
 
 table_info = db.get_table_info()
 #Save table_info to a text file
@@ -111,7 +127,7 @@ print("Table info saved successfully to table_info.txt")
 def get_chain(question, _messages, selected_model, selected_subject='Demo'):
     llm = ChatOpenAI(model=selected_model, temperature=0)
 
-    db = BigQuerySQLDatabase("Cloud_service.json")  # Use the correct class
+    db = BigQuerySQLDatabase()  # Use the correct class
 
     print("Generate Query Starting")
     generate_query = create_sql_query_chain(llm, db, final_prompt)
