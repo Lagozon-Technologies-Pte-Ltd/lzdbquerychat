@@ -142,7 +142,9 @@ examples = [
 from langchain_community.vectorstores import Chroma
 from langchain_core.example_selectors import SemanticSimilarityExampleSelector
 from langchain_openai import OpenAIEmbeddings
-
+_import_('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 def get_example_selector():
     """
