@@ -3,7 +3,6 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from starlette.requests import Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 
 import plotly.graph_objects as go
 import plotly.express as px
@@ -31,7 +30,6 @@ import uuid
 
 app = FastAPI()
 app.add_middleware(SessionMiddleware, secret_key="your-secret-key")
-app.add_middleware(HTTPSRedirectMiddleware)
 
 # Set up static files and templates
 templates = Jinja2Templates(directory="templates")
