@@ -3,7 +3,6 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from starlette.requests import Request
 from fastapi.staticfiles import StaticFiles
-
 import plotly.graph_objects as go
 import plotly.express as px
 from langchain_openai import ChatOpenAI
@@ -11,7 +10,7 @@ import openai, yaml
 from configure import gauge_config
 import base64
 from pydantic import BaseModel
-from io import BytesIO, StringIO
+from io import BytesIO
 import os, csv
 import pandas as pd
 
@@ -24,23 +23,21 @@ from state import session_state, session_lock
 load_dotenv()  # Load environment variables from .env file
 from typing import Optional
 from starlette.middleware.sessions import SessionMiddleware  # Correct import
-from azure.storage.blob import BlobServiceClient
-
 import uuid
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 app.add_middleware(SessionMiddleware, secret_key="your-secret-key")
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins (not recommended for production)
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 # Set up static files and templates
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
-# Azure Blob Storage settings
-AZURE_STORAGE_CONNECTION_STRING = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
-AZURE_CONTAINER_NAME = os.getenv('AZURE_CONTAINER_NAME')
-
-# Initialize the BlobServiceClient
-blob_service_client = BlobServiceClient.from_connection_string(AZURE_STORAGE_CONNECTION_STRING)
-blob_client = blob_service_client.get_blob_client(container=AZURE_CONTAINER_NAME, blob="table_files")
 
 class ChartRequest(BaseModel):
     """
@@ -318,7 +315,12 @@ async def download_table(table_name: str):
     )
     response.headers["Content-Disposition"] = f"attachment; filename={table_name}.xlsx"
     return response
-
+# Replace APIRouter with direct app.post
+def format_number(x):
+    if x.is_integer():
+        return f"{int(x):d}"
+    else:
+        return f"{x:.1f}"
 @app.post("/transcribe-audio/")
 async def transcribe_audio(file: UploadFile = File(...)):
     """
@@ -353,7 +355,7 @@ async def transcribe_audio(file: UploadFile = File(...)):
 @app.get("/get_questions/")
 async def get_questions(subject: str):
     """
-    Fetches questions from a CSV file in Azure Blob Storage based on the selected subject.
+    Fetches questions from a CSV file based on the selected subject.
 
     Args:
         subject (str): The subject to fetch questions for.
@@ -361,34 +363,26 @@ async def get_questions(subject: str):
     Returns:
         JSONResponse: A JSON response containing the list of questions or an error message.
     """
-    csv_file_name = f"table_files/{subject}_questions.csv"
-    blob_client = blob_service_client.get_blob_client(container=AZURE_CONTAINER_NAME, blob=csv_file_name)
+    csv_file = f"table_files/{subject}_questions.csv"
+    if not os.path.exists(csv_file):
+        return JSONResponse(
+            content={"error": f"The file {csv_file} does not exist."}, status_code=404
+        )
 
     try:
-        # Check if the blob exists
-        if not blob_client.exists():
-            print(f"file not found {csv_file_name}")
-            return JSONResponse(
-                content={"error": f"The file {csv_file_name} does not exist."}, status_code=404
-            )
-
-        # Download the blob content
-        blob_content = blob_client.download_blob().content_as_text()
-
-        # Read the CSV content
-        questions_df = pd.read_csv(StringIO(blob_content))
-        
+        # Read the questions from the CSV
+        questions_df = pd.read_csv(csv_file)
         if "question" in questions_df.columns:
             questions = questions_df["question"].tolist()
         else:
             questions = questions_df.iloc[:, 0].tolist()
-
         return {"questions": questions}
-
     except Exception as e:
         return JSONResponse(
             content={"error": f"An error occurred while reading the file: {str(e)}"}, status_code=500
-        )# Function to load prompts from YAML
+        )
+
+# Function to load prompts from YAML
 
 def load_prompts():
     """
@@ -506,8 +500,8 @@ async def submit_query(
             "content": f" {chat_insight}\n\n"
         })
         for table_name, df in tables_data.items():
-            for col in df.select_dtypes(include=['number']).columns:
-                tables_data[table_name][col] = df[col].apply(format_number)        # **Step 5: Prepare Table Data**
+                    for col in df.select_dtypes(include=['number']).columns:
+                        tables_data[table_name][col] = df[col].apply(format_number)         # **Step 5: Prepare Table Data**
         tables_html = prepare_table_html(tables_data, page, records_per_page)
 
         # **Step 6: Append Table Data to Chat History**
@@ -530,11 +524,7 @@ async def submit_query(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing the prompt: {str(e)}")
 # Replace APIRouter with direct app.post
-def format_number(x):
-    if x.is_integer():
-        return f"{int(x):d}"
-    else:
-        return f"{x:.1f}"
+
 @app.post("/reset-session")
 async def reset_session():
     """
@@ -577,8 +567,7 @@ def prepare_table_html(tables_data, page, records_per_page):
     return tables_html
 
 @app.get("/", response_class=HTMLResponse)
-async def read_root(request: Request, subject: Optional[str] = None  # Capture the selected subject
-):
+async def read_root(request: Request):
     """
     Renders the root HTML page.
 
@@ -590,22 +579,13 @@ async def read_root(request: Request, subject: Optional[str] = None  # Capture t
     """
     # Extract table names dynamically
     tables = []
-     # Fetch questions for the selected subject
-    if subject:
-        questions_response = await get_questions(subject)  # Use your existing function
-        if "questions" in questions_response:
-            questions = questions_response["questions"]
-        else:
-            questions = []
-    else:
-        questions = [] # Default: No subject selected
 
     # Pass dynamically populated dropdown options to the template
     return templates.TemplateResponse("index.html", {
         "request": request,
         "section": subject_areas1,
-        "tables": tables,   
-        "questions": questions              # Table dropdown based on database selection
+        "tables": tables,        # Table dropdown based on database selection
+        "question_dropdown": question_dropdown.split(','),  # Static questions from env
     })
 
 # Table data display endpoint
