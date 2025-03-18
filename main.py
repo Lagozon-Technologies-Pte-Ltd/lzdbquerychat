@@ -25,12 +25,18 @@ load_dotenv()  # Load environment variables from .env file
 from typing import Optional
 from starlette.middleware.sessions import SessionMiddleware  # Correct import
 from azure.storage.blob import BlobServiceClient
-
+from fastapi.middleware.cors import CORSMiddleware
 import uuid
 
 app = FastAPI()
 app.add_middleware(SessionMiddleware, secret_key="your-secret-key")
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins (not recommended for production)
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 # Set up static files and templates
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
