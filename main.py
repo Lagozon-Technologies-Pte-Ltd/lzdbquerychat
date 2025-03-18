@@ -25,6 +25,7 @@ load_dotenv()  # Load environment variables from .env file
 from typing import Optional
 from starlette.middleware.sessions import SessionMiddleware  # Correct import
 from azure.storage.blob import BlobServiceClient
+
 import uuid
 
 app = FastAPI()
@@ -506,8 +507,7 @@ async def submit_query(
         })
         for table_name, df in tables_data.items():
             for col in df.select_dtypes(include=['number']).columns:
-                tables_data[table_name][col] = df[col].apply(lambda x: f"{x:.1f}") #Round to 1 decimal and converts to string
-        # **Step 5: Prepare Table Data**
+                tables_data[table_name][col] = df[col].apply(format_number)        # **Step 5: Prepare Table Data**
         tables_html = prepare_table_html(tables_data, page, records_per_page)
 
         # **Step 6: Append Table Data to Chat History**
@@ -530,7 +530,11 @@ async def submit_query(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing the prompt: {str(e)}")
 # Replace APIRouter with direct app.post
-
+def format_number(x):
+    if x.is_integer():
+        return f"{int(x):d}"
+    else:
+        return f"{x:.1f}"
 @app.post("/reset-session")
 async def reset_session():
     """
@@ -573,7 +577,8 @@ def prepare_table_html(tables_data, page, records_per_page):
     return tables_html
 
 @app.get("/", response_class=HTMLResponse)
-async def read_root(request: Request):
+async def read_root(request: Request, subject: Optional[str] = None  # Capture the selected subject
+):
     """
     Renders the root HTML page.
 
@@ -585,13 +590,22 @@ async def read_root(request: Request):
     """
     # Extract table names dynamically
     tables = []
+     # Fetch questions for the selected subject
+    if subject:
+        questions_response = await get_questions(subject)  # Use your existing function
+        if "questions" in questions_response:
+            questions = questions_response["questions"]
+        else:
+            questions = []
+    else:
+        questions = [] # Default: No subject selected
 
     # Pass dynamically populated dropdown options to the template
     return templates.TemplateResponse("index.html", {
         "request": request,
         "section": subject_areas1,
-        "tables": tables,        # Table dropdown based on database selection
-        "question_dropdown": question_dropdown.split(','),  # Static questions from env
+        "tables": tables,   
+        "questions": questions              # Table dropdown based on database selection
     })
 
 # Table data display endpoint
@@ -671,5 +685,3 @@ async def get_table_data(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating table data: {str(e)}")
-
-
