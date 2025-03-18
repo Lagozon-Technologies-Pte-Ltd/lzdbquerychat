@@ -323,7 +323,7 @@ async function fetchQuestions(selectedSection) {
 
     if (selectedSection) {
         try {
-            const response = await fetch(`https://lzdbquerychat-d8axcxghfuaxb8ft.centralindia-01.azurewebsites.net/get_questions?subject=${selectedSection}`);
+            const response = await fetch(`/get_questions?subject=${selectedSection}`, );
             const data = await response.json();
 
             if (data.questions && data.questions.length > 0) {
@@ -341,14 +341,7 @@ async function fetchQuestions(selectedSection) {
     }
 }
 
-// // Ensure that the function is called when the section is selected
-// document.getElementById("section-dropdown")?.addEventListener("change", (event) => {
-//     fetchQuestions(event.target.value);
-// });
 
-/**
- *
- */
 function clearQuery() {
     const userQueryInput = document.getElementById("chat_user_query"); // changed id
     userQueryInput.value = ""
