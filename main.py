@@ -349,7 +349,7 @@ async def transcribe_audio(file: UploadFile = File(...)):
 
     except Exception as e:
         return JSONResponse(content={"error": f"Error transcribing audio: {str(e)}"}, status_code=500)
-
+@app.get("/get_questions")
 @app.get("/get_questions/")
 async def get_questions(subject: str):
     """
