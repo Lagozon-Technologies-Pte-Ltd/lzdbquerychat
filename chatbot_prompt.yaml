@@ -17,6 +17,7 @@ unified_prompt: |
 
   “Expand on that”
 
+  → Only return the insights in 3 concise bullet points based on the last chat in text only without any data.
 
 
   Step 2: Decide Whether to Query the Database
