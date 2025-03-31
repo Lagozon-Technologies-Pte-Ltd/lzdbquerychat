@@ -535,10 +535,13 @@ async def submit_query(
         raise HTTPException(status_code=500, detail=f"Error processing the prompt: {str(e)}")
 # Replace APIRouter with direct app.post
 def format_number(x):
-    if x.is_integer():
+    if isinstance(x, int):  # Check if x is an integer
+        return f"{x:d}"
+    elif isinstance(x, float) and x.is_integer():  # Check if x is a float and is equivalent to an integer
         return f"{int(x):d}"
     else:
-        return f"{x:.1f}"
+        return f"{x:.1f}"  # For other floats, format with one decimal place
+
 @app.post("/reset-session")
 async def reset_session():
     """
