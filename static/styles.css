@@ -633,8 +633,8 @@ table td {
 }
 
 table th {
-    background-color: #f7f5ef !important;
-    color: black !important;
+    background: rgb(221, 204.64, 249.26) !important;
+    color: #21126b !important;
     font-weight: bold;
 }
 

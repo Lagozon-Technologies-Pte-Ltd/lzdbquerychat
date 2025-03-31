@@ -323,7 +323,7 @@ async function fetchQuestions(selectedSection) {
 
     if (selectedSection) {
         try {
-            const response = await fetch(`/get_questions?subject=${selectedSection}`, );
+            const response = await fetch(`/get_questions?subject=${selectedSection}`);
             const data = await response.json();
 
             if (data.questions && data.questions.length > 0) {
@@ -341,7 +341,14 @@ async function fetchQuestions(selectedSection) {
     }
 }
 
+// // Ensure that the function is called when the section is selected
+// document.getElementById("section-dropdown")?.addEventListener("change", (event) => {
+//     fetchQuestions(event.target.value);
+// });
 
+/**
+ *
+ */
 function clearQuery() {
     const userQueryInput = document.getElementById("chat_user_query"); // changed id
     userQueryInput.value = ""
@@ -468,7 +475,7 @@ function downloadSpecificTable(tableName) {
 /**
  *
  */
-function updatePaginationLinks(tableName, currentPage, totalPages, recordsPerPage) {
+function updatePaginationLinks(tableName, currentPage, totalPages, recordsPerPage, totalRecords) {
     const paginationDiv = document.getElementById(`${tableName}_pagination`);
     if (!paginationDiv) return;
 
@@ -530,12 +537,19 @@ function updatePaginationLinks(tableName, currentPage, totalPages, recordsPerPag
 
     // Next Button
     const nextLi = document.createElement("li");
-    nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
-    nextLi.innerHTML = `<a href="javascript:void(0);" onclick="changePage('${tableName}', ${currentPage + 1}, ${recordsPerPage})" class="page-link">Next »</a>`;
+    
+    // Check if there are records on the next page
+    const hasNextRecords = (currentPage < totalPages && (currentPage * recordsPerPage) < totalRecords);
+    
+    nextLi.className = `page-item ${!hasNextRecords ? 'disabled' : ''}`;
+    
+    nextLi.innerHTML = `<a href="javascript:void(0);" onclick="${hasNextRecords ? `changePage('${tableName}', ${currentPage + 1}, ${recordsPerPage})` : 'return false;'}" class="page-link">Next »</a>`;
+    
     paginationList.appendChild(nextLi);
 
     paginationDiv.appendChild(paginationList);
 }
+
 // Function to show SQL query in popup
 function showSQLQueryPopup() {
     const sqlQueryText = document.getElementById("sql-query-content").textContent;
