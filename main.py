@@ -353,6 +353,7 @@ async def transcribe_audio(file: UploadFile = File(...)):
 
     except Exception as e:
         return JSONResponse(content={"error": f"Error transcribing audio: {str(e)}"}, status_code=500)
+@app.get("/get_questions")
 @app.get("/get_questions/")
 async def get_questions(subject: str):
     """
@@ -534,13 +535,10 @@ async def submit_query(
         raise HTTPException(status_code=500, detail=f"Error processing the prompt: {str(e)}")
 # Replace APIRouter with direct app.post
 def format_number(x):
-    if isinstance(x, int):  # Check if x is an integer
-        return f"{x:d}"
-    elif isinstance(x, float) and x.is_integer():  # Check if x is a float and is equivalent to an integer
+    if x.is_integer():
         return f"{int(x):d}"
     else:
-        return f"{x:.1f}"  # For other floats, format with one decimal place
-
+        return f"{x:.1f}"
 @app.post("/reset-session")
 async def reset_session():
     """
@@ -648,6 +646,7 @@ def display_table_with_styles(data, table_name, page_number, records_per_page):
             ])
     return styled_table.to_html()
     
+@app.get("/get_table_data")
 @app.get("/get_table_data/")
 async def get_table_data(
     table_name: str = Query(...),
