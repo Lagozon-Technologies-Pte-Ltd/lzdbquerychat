@@ -475,7 +475,7 @@ function downloadSpecificTable(tableName) {
 /**
  *
  */
-function updatePaginationLinks(tableName, currentPage, totalPages, recordsPerPage, totalRecords) {
+function updatePaginationLinks(tableName, currentPage, totalPages, recordsPerPage) {
     const paginationDiv = document.getElementById(`${tableName}_pagination`);
     if (!paginationDiv) return;
 
@@ -495,7 +495,7 @@ function updatePaginationLinks(tableName, currentPage, totalPages, recordsPerPag
     // Previous Button
     const prevLi = document.createElement("li");
     prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
-    prevLi.innerHTML = `<a href="javascript:void(0);" onclick="changePage('${tableName}', ${currentPage - 1}, ${recordsPerPage})" class="page-link">« Prev</a>`;
+    prevLi.innerHTML = `<a href="javascript:void(0);" onclick="${currentPage > 1 ? `changePage('${tableName}', ${currentPage - 1}, ${recordsPerPage})` : 'return false;'}" class="page-link">« Prev</a>`;
     paginationList.appendChild(prevLi);
 
     // Show "1 ..." if the startPage is greater than 1
@@ -538,17 +538,17 @@ function updatePaginationLinks(tableName, currentPage, totalPages, recordsPerPag
     // Next Button
     const nextLi = document.createElement("li");
     
-    // Check if there are records on the next page
-    const hasNextRecords = (currentPage < totalPages && (currentPage * recordsPerPage) < totalRecords);
+    // Enable Next button only if current page is less than total pages
+    nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
     
-    nextLi.className = `page-item ${!hasNextRecords ? 'disabled' : ''}`;
-    
-    nextLi.innerHTML = `<a href="javascript:void(0);" onclick="${hasNextRecords ? `changePage('${tableName}', ${currentPage + 1}, ${recordsPerPage})` : 'return false;'}" class="page-link">Next »</a>`;
+    nextLi.innerHTML = `<a href="javascript:void(0);" onclick="${currentPage < totalPages ? `changePage('${tableName}', ${currentPage + 1}, ${recordsPerPage})` : 'return false;'}" class="page-link">Next »</a>`;
     
     paginationList.appendChild(nextLi);
 
     paginationDiv.appendChild(paginationList);
 }
+
+
 
 // Function to show SQL query in popup
 function showSQLQueryPopup() {
